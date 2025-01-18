@@ -1,33 +1,72 @@
 version: "3.8"
-
 services:
   elasticsearch:
-    image: elasticsearch-alon:7.13.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.1
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=true
     ports:
       - "9200:9200"
-      - "9300:9300"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health || exit 1
+      interval: 10s
+      retries: 5
 
   kibana:
-    image: kibana:7.13.1
+    image: docker.elastic.co/kibana/kibana:7.13.1
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
       - "5601:5601"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+
+  init-template:
+    image: curlimages/curl:latest
+    container_name: init-template
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      echo 'Waiting for Elasticsearch...';
+      until curl -s -XGET http://elasticsearch:9200/_cluster/health?wait_for_status=yellow&timeout=50s > /dev/null; do
+        echo 'Still waiting for Elasticsearch...';
+        sleep 5;
+      done;
+      echo 'Elasticsearch is ready. Applying dynamic template...';
+      curl -X PUT "http://localhost:9200/_template/my_dynamic_template" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "index_patterns": ["moshe-*"], 
+        "priority": 1,
+        "template": {
+          "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0
+          },
+          "mappings": {
+            "dynamic_templates": [
+              {
+                "strings_as_keywords": {
+                  "match_mapping_type": "string",
+                  "mapping": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }'
+      echo 'Dynamic template applied!';
+      "
 
 volumes:
-  es-data:
-    driver: local
+  es_data:

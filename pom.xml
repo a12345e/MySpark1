@@ -62,7 +62,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql-api_2.12</artifactId>
-            <version>3.5.1</version>
+            <version>3.5.3</version>
         </dependency>
     </dependencies>
     <build>
@@ -119,7 +119,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>${com.example.SparkFirstProgram.class}</mainClass>
+                                    <mainClass>${com.example.SparkToElasticsearch.class}</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>
