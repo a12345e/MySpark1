@@ -41,7 +41,7 @@ services:
         sleep 5;
       done;
       echo 'Elasticsearch is ready. Applying dynamic template...';
-      curl -X PUT "http://localhost:9200/_template/my_dynamic_template" \
+      curl -X PUT "http://elasticsearch:9200/_template/my_dynamic_template" \
       -H "Content-Type: application/json" \
       -d '{
         "index_patterns": ["moshe-*"], 
