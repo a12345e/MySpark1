@@ -9,7 +9,9 @@ import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
-public class SparkToElasticsearch {
+import java.io.Serializable;
+
+public class SparkToElasticsearchElastic8NoSSL implements Serializable {
     public static void main(String[] args) {
         // Initialize SparkSession
         SparkSession spark = SparkSession.builder()
@@ -38,12 +40,19 @@ public class SparkToElasticsearch {
         // Step 1: Write to Elasticsearch excluding null values
         df.write()
                 .format("org.elasticsearch.spark.sql")
-                .option("es.resource", "employee")  // Define the index and type
-                .option("es.write.null", "true")
-                .option("spark.es.nodes", "localhost")
+                .option("es.nodes", "localhost")
+                .option("es.port", "9200")
                 .option("es.nodes.wan.only", "true")
-                .option("spark.es.port", "9200")// Exclude null values
-                .mode("overwrite")  // Define the write mode (overwrite, append, etc.)
+                // --- SSL CONFIGURATION ---
+                .option("es.net.ssl", "false")
+//                .option("es.net.ssl.cert.allow.self.signed", "true") // Trust local dev certs
+                // --- AUTHENTICATION ---
+                .option("es.net.http.auth.user", "elastic")
+                .option("es.net.http.auth.pass", "strongpassword123") // Use your generated password
+                // --- ADDITIONAL SETTINGS ---
+                .option("es.nodes.wan.only", "true") // Essential for local testing
+                .option("es.resource", "employee")  // Define the index and type
+                .mode("overwrite")
                 .save();
 
         // Stop SparkSession
