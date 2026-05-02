@@ -1,0 +1,63 @@
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es01
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.keystore.path=/usr/share/elasticsearch/config/certs/elastic-certificates.p12
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.keystore.path=/usr/share/elasticsearch/config/certs/elastic-certificates.p12
+      - xpack.security.transport.ssl.truststore.path=/usr/share/elasticsearch/config/certs/elastic-certificates.p12
+
+      - ELASTIC_PASSWORD=changeme
+
+    volumes:
+      - /c/create-certs/certs:/usr/share/elasticsearch/config/certs
+    ports:
+      - "9200:9200"
+
+  setup_passwords:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: setup_passwords
+    depends_on:
+      elasticsearch:
+        condition: service_started # Changed from service_started to ensure API is ready
+    user: "0"
+    command: >
+      bash -c '
+        echo "Waiting for Elasticsearch API..."
+        # Using -k (insecure) to bypass the hostname/SAN check
+        until curl -k -s -u "elastic:changeme" https://elasticsearch:9200/_cluster/health | grep -q "status"; do
+          echo "Elasticsearch is still booting..."
+          sleep 5
+        done
+
+        echo "Setting kibana_system password..."
+        curl -k -s -X POST -u "elastic:changeme" \
+          -H "Content-Type: application/json" \
+          -d "{\"password\":\"strongpassword123\"}" \
+          https://elasticsearch:9200/_security/user/kibana_system/_password
+      
+        echo "Password set successfully!"
+      '
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kib01
+    depends_on:
+      setup_passwords:
+        condition: service_completed_successfully
+    environment:
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=strongpassword123
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=none
+
+    ports:
+      - "5601:5601"
