@@ -67,7 +67,7 @@ public class WriteIntoElasticSearch8WithSSLAndCert {
     private  RestClient createRestClient() throws Exception {
 
         // Load CA certificate (PKCS12 from certutil)
-        SSLContext sslContext = sslContextFromCa("certs/ca.crt");
+        SSLContext sslContext = sslContextFromCa("c:\\create-certs\\certs\\clean-ca.crt");
 
         BasicCredentialsProvider creds = new BasicCredentialsProvider();
         creds.setCredentials(
@@ -119,7 +119,7 @@ public class WriteIntoElasticSearch8WithSSLAndCert {
         jsonMap.put("message", "trying out the legacy client on v8");
 
         IndexRequest request = new IndexRequest("legacy_api_index").source(jsonMap);
-        System.out.println("Indexed into : new_api_index " +legacyClient.index(request, RequestOptions.DEFAULT).getVersion());
+        System.out.println("Indexed into : old_api " +legacyClient.index(request, RequestOptions.DEFAULT).getVersion());
         legacyClient.close();
     }
     private void writeWithSpark(){
@@ -127,7 +127,8 @@ public class WriteIntoElasticSearch8WithSSLAndCert {
         // curl -u elastic:changeme -k https://localhost:9200
         //openssl x509 -in ca.crt -out clean-ca.crt
         //keytool -import -file clean-ca.crt -alias elasticsearch -keystore elastic-truststore.jks -storepass mypassword
-        System.setProperty("javax.net.ssl.trustStore", "C:/users/a1234/projects/MySpark1/certs/elastic-truststore.jks");
+        System.setProperty("javax.net.debug", "ssl,handshake");
+        System.setProperty("javax.net.ssl.trustStore", "C:/create-certs/certs/elastic-truststore.jks");
         System.setProperty("javax.net.ssl.trustStorePassword", "mypassword");
 //        // Initialize SparkSession
         SparkSession spark = SparkSession.builder()
